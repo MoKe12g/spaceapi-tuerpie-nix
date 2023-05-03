@@ -1,12 +1,11 @@
-use std::process::Command;
+use std::env;
 use std::thread::sleep;
 use std::time::Duration;
 
 use rppal::gpio::{Gpio, InputPin, Level};
+use spaceapi_dezentrale_client::Client;
 
 // set your scripts for opening and closing the space here
-static OPEN_SPACE: &str = "spaceopen";
-static CLOSE_SPACE: &str = "spaceclose";
 static DOOR_PIN: u8 = 27;
 // delays in seconds
 static RECHECK_DELAY: u64 = 5;
@@ -17,9 +16,15 @@ fn main() {
     let gpio = Gpio::new().unwrap();
     let pin = gpio.get(DOOR_PIN).unwrap().into_input();
 
+    let spaceapi_client = spaceapi_dezentrale_client::ClientBuilder::new()
+        .api_key(&*env::var("API_KEY").unwrap())
+        .base_url(&*env::var("SPACEAPI_URL").unwrap())
+        .build()
+        .unwrap();
+
     // get initial door status
     let mut door_status_old = check_door(&pin);
-    push_door_status(door_status_old);
+    push_door_status(&spaceapi_client,door_status_old);
 
     loop {
         // maybe not the best solution but the pi isn't doing anything else
@@ -40,7 +45,7 @@ fn main() {
             {
                 println!("Check passed, applying new status");
                 println!("Pushing space status: Open = {}", door_status_new);
-                push_door_status(door_status_new);
+                push_door_status(&spaceapi_client,door_status_new);
                 println!("Saving space status: {}", door_status_new);
                 door_status_old = door_status_new;
             } else {
@@ -55,11 +60,6 @@ fn check_door(pin: &InputPin) -> bool {
     return pin.read() == Level::Low;
 }
 
-fn push_door_status(open: bool) {
-    let mut command = Command::new("sh");
-    command
-        .arg("-c");
-    if open { command.arg(OPEN_SPACE); } else { command.arg(CLOSE_SPACE); }
-    command.spawn()
-        .expect("Failed to execute process. Push to api failed");
+fn push_door_status(spaceapi: &Client, open: bool) {
+    if open { spaceapi.open(); } else { spaceapi.close(); }
 }
