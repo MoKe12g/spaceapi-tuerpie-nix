@@ -1,4 +1,3 @@
-use std::env;
 use std::process::Command;
 use std::thread::sleep;
 use std::time::Duration;
@@ -59,9 +58,7 @@ fn check_door(pin: &InputPin) -> bool {
 fn push_door_status(open: bool) {
     let mut command = Command::new("sh");
     command
-        .arg("-c")
-        .arg(format!("SPACEAPI_URL={}", env::var("SPACEAPI_URL").unwrap()))
-        .arg(format!("API_KEY={}", env::var("API_KEY").unwrap()));
+        .arg("-c");
     if open { command.arg(OPEN_SPACE); } else { command.arg(CLOSE_SPACE); }
     command.spawn()
         .expect("Failed to execute process. Push to api failed");
